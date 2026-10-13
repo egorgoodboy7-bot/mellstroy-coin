@@ -34,13 +34,12 @@
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
-        /* Кнопка-кликер с картинкой на фоне */
         .tap-btn {
             background-color: #1a2332;
-            /* Картинка на фоне: можно менять размер (130%) и смещение (-10px влево, по центру по вертикали) */
-            background-image: url('mellstroy.png');
+            /* Принудительно сбрасываем кэш с помощью ?v=2 */
+            background-image: url('mellstroy.png?v=2');
             background-size: 130%; 
-            background-position: calc(50% - 10px) 50%; /* Сдвиг влево на 10 пикселей */
+            background-position: calc(50% - 10px) 50%;
             background-repeat: no-repeat;
             
             border: 4px solid #00f2fe;
