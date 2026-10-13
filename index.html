@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MellTap</title>
+    <!-- Подключаем скрипт Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -34,10 +36,10 @@
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
+        /* Кнопка-кликер */
         .tap-btn {
             background-color: #1a2332;
-            /* Принудительно сбрасываем кэш с помощью ?v=2 */
-            background-image: url('mellstroy.png?v=2');
+            background-image: url('mellstroy.png');
             background-size: 130%; 
             background-position: calc(50% - 10px) 50%;
             background-repeat: no-repeat;
@@ -67,6 +69,12 @@
     <div class="tap-btn" id="clickArea"></div>
 
     <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.expand(); // Разворачиваем окно на весь экран
+        }
+
         let count = 0;
         const scoreElement = document.getElementById('score');
         const clickArea = document.getElementById('clickArea');
@@ -74,6 +82,14 @@
         clickArea.addEventListener('click', () => {
             count++;
             scoreElement.innerText = count;
+
+            // Вызываем легкую вибрацию Telegram HapticFeedback
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            } else if (navigator.vibrate) {
+                // Запасной вариант для обычных браузеров
+                navigator.vibrate(10);
+            }
         });
     </script>
 </body>
