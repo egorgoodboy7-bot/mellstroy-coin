@@ -1,101 +1,90 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Mellstroy Tap</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body {
-      background: #0f0f13;
-      color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      user-select: none;
-      overflow: hidden;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .title {
-      font-size: 20px;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-    }
-    .score {
-      font-size: 48px;
-      font-weight: 900;
-      color: #2ec4b6;
-      text-shadow: 0 0 15px rgba(46, 196, 182, 0.5);
-    }
-    .coin-container {
-      position: relative;
-    }
-    .coin {
-      width: 220px;
-      height: 220px;
-      background: radial-gradient(circle, #2ec4b6 0%, #0f172a 100%);
-      border: 4px solid #2ec4b6;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 90px;
-      cursor: pointer;
-      box-shadow: 0 0 30px rgba(46, 196, 182, 0.3);
-      transition: transform 0.05s ease;
-    }
-    .coin:active {
-      transform: scale(0.93);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MellTap</title>
+    <style>
+        body {
+            background-color: #0d0f12;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h2 {
+            font-size: 18px;
+            letter-spacing: 2px;
+            color: #8a939e;
+            margin-bottom: 5px;
+        }
+
+        .score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00f2fe;
+            margin-bottom: 40px;
+            text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+
+        /* Кнопка-кликер */
+        .tap-btn {
+            background: radial-gradient(circle, #1a2332 0%, #0d0f12 100%);
+            border: 4px solid #00f2fe;
+            border-radius: 50%;
+            width: 220px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(0, 242, 254, 0.2);
+            transition: transform 0.05s ease, box-shadow 0.1s ease;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tap-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Картинка Мелстроя внутри кнопки */
+        .tap-btn img {
+            width: 140px;
+            height: 140px;
+            object-fit: contain;
+            pointer-events: none; /* чтобы клик проходил сквозь картинку на кнопку */
+            border-radius: 50%; /* если картинка квадратная, сделает ее круглой */
+        }
+    </style>
 </head>
 <body>
 
-  <div class="header">
-    <div class="title">Баланс Борова</div>
+    <h2>БАЛАНС</h2>
     <div class="score" id="score">0</div>
-  </div>
 
-  <div class="coin-container">
-    <div class="coin" id="coinBtn">💸</div>
-  </div>
+    <div class="tap-btn" id="clickArea">
+        <!-- Укажи имя своего файла с картинкой ниже -->
+        <img src="mellstroy1.png" alt="Mellstroy">
+    </div>
 
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+    <script>
+        let count = 0;
+        const scoreElement = document.getElementById('score');
+        const clickArea = document.getElementById('clickArea');
 
-    let count = 0;
-    const scoreEl = document.getElementById('score');
-    const coinBtn = document.getElementById('coinBtn');
-
-    coinBtn.addEventListener('click', (e) => {
-      count += 1;
-      scoreEl.innerText = count.toLocaleString();
-
-      if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('medium');
-      }
-
-      if (count % 10 === 0) {
-        saveProgress(count);
-      }
-    });
-
-    function saveProgress(clicks) {
-      fetch('/api/tap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clicks: clicks })
-      });
-    }
-  </script>
+        clickArea.addEventListener('click', () => {
+            count++;
+            scoreElement.innerText = count;
+        });
+    </script>
 </body>
 </html>
