@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=22"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=23"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -278,7 +278,7 @@
             <div class="card">
                 <div class="card-info">
                     <div class="card-title">Мультитап</div>
-                    <div class="card-desc">+1 балл за клик</div>
+                    <div class="card-desc" id="multitapDesc">+1$ за клик</div>
                 </div>
                 <button class="card-btn" id="btnBuyMultitap">100$</button>
             </div>
@@ -329,6 +329,8 @@
         let energy = 500;
         let maxEnergy = 500;
         let tapPower = 1;
+        let multitapCost = 100;
+        let energyCost = 200;
 
         try {
             const savedScore = localStorage.getItem('mell_score');
@@ -343,6 +345,12 @@
             const savedPower = localStorage.getItem('mell_tap_power');
             if (savedPower) tapPower = parseInt(savedPower, 10);
 
+            const savedMultitapCost = localStorage.getItem('mell_multitap_cost');
+            if (savedMultitapCost) multitapCost = parseInt(savedMultitapCost, 10);
+
+            const savedEnergyCost = localStorage.getItem('mell_energy_cost');
+            if (savedEnergyCost) energyCost = parseInt(savedEnergyCost, 10);
+
             const lastTime = localStorage.getItem('mell_last_time');
             if (lastTime) {
                 const passed = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
@@ -355,6 +363,9 @@
         const energyText = document.getElementById('energyText');
         const energyBar = document.getElementById('energyBar');
         const energyTimer = document.getElementById('energyTimer');
+        const btnBuyMultitap = document.getElementById('btnBuyMultitap');
+        const btnBuyEnergy = document.getElementById('btnBuyEnergy');
+        const multitapDesc = document.getElementById('multitapDesc');
 
         scoreEl.innerText = count + '$';
         updateUI();
@@ -377,6 +388,8 @@
                 localStorage.setItem('mell_energy', energy);
                 localStorage.setItem('mell_max_energy', maxEnergy);
                 localStorage.setItem('mell_tap_power', tapPower);
+                localStorage.setItem('mell_multitap_cost', multitapCost);
+                localStorage.setItem('mell_energy_cost', energyCost);
                 localStorage.setItem('mell_last_time', Math.floor(Date.now() / 1000));
             } catch (e) {}
         }
@@ -385,6 +398,10 @@
             scoreEl.innerText = count + '$';
             energyText.innerText = energy + ' / ' + maxEnergy;
             energyBar.style.width = (energy / maxEnergy * 100) + '%';
+
+            multitapDesc.innerText = `+${tapPower}$ за клик`;
+            btnBuyMultitap.innerText = multitapCost + '$';
+            btnBuyEnergy.innerText = energyCost + '$';
 
             if (energy >= maxEnergy) {
                 energyTimer.innerText = "Полный бак";
@@ -400,34 +417,34 @@
             const rect = clickArea.getBoundingClientRect();
             const div = document.createElement('div');
             div.className = 'plus-one';
-            div.innerText = '+' + text;
+            div.innerText = '+' + text + '$';
             div.style.left = (x - rect.left) + 'px';
             div.style.top = (y - rect.top) + 'px';
             clickArea.appendChild(div);
             setTimeout(() => div.remove(), 700);
         }
 
-        // Покупка улучшений
-        document.getElementById('btnBuyMultitap').addEventListener('click', () => {
-            const cost = 100;
-            if (count >= cost) {
-                count -= cost;
+        // Покупка мультитапа
+        btnBuyMultitap.addEventListener('click', () => {
+            if (count >= multitapCost) {
+                count -= multitapCost;
                 tapPower++;
+                multitapCost = Math.round(multitapCost * 1.2); // +20% к цене
                 saveGame();
                 updateUI();
-                document.querySelector('#btnBuyMultitap').previousElementSibling.querySelector('.card-desc').innerText = `+${tapPower} балла за клик`;
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
             } else {
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); } catch(e){}
             }
         });
 
-        document.getElementById('btnBuyEnergy').addEventListener('click', () => {
-            const cost = 200;
-            if (count >= cost) {
-                count -= cost;
+        // Покупка запаса энергии
+        btnBuyEnergy.addEventListener('click', () => {
+            if (count >= energyCost) {
+                count -= energyCost;
                 maxEnergy += 250;
-                energy = maxEnergy; // Восстанавливаем до максимума при покупке
+                energy = maxEnergy; // Полный бак при покупке
+                energyCost = Math.round(energyCost * 1.2); // +20% к цене
                 saveGame();
                 updateUI();
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -436,16 +453,16 @@
             }
         });
 
-        // Клик по кнопке
+        // Клик по кнопке (тратится ровно 1 энергии, а баланс растет на tapPower)
         clickArea.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            if (energy < tapPower) {
+            if (energy < 1) {
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy'); } catch(err){}
                 return;
             }
 
             count += tapPower;
-            energy -= tapPower;
+            energy -= 1; // Всегда тратится ровно 1 ед. энергии
             updateUI();
             saveGame();
             spawnPlus(e.clientX, e.clientY, tapPower);
