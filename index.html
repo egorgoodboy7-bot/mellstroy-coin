@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=17"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=18"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -112,7 +112,6 @@
             transition: width 0.2s linear;
         }
 
-        /* Нижняя строка с бонусом и таймером */
         .energy-footer {
             display: flex;
             justify-content: space-between;
@@ -161,7 +160,6 @@
 
     <div class="tap-btn" id="clickArea"></div>
 
-    <!-- Карточка со шкалой энергии -->
     <div class="energy-container">
         <div class="energy-info">
             <span>⚡ ЭНЕРГИЯ</span>
@@ -186,6 +184,7 @@
         let energy = 500;
         const maxEnergy = 500;
 
+        // Загрузка состояния и пассивного восполнения очков
         try {
             const savedScore = localStorage.getItem('mell_score');
             if (savedScore !== null && !isNaN(savedScore)) {
@@ -194,6 +193,16 @@
             const savedEnergy = localStorage.getItem('mell_energy');
             if (savedEnergy !== null && !isNaN(savedEnergy)) {
                 energy = parseInt(savedEnergy, 10);
+            }
+
+            // Считаем офлайн-прогресс (сколько секунд прошло с последнего захода)
+            const lastTime = localStorage.getItem('mell_last_time');
+            if (lastTime !== null) {
+                const now = Math.floor(Date.now() / 1000);
+                const secondsPassed = now - parseInt(lastTime, 10);
+                if (secondsPassed > 0) {
+                    energy = Math.min(maxEnergy, energy + secondsPassed);
+                }
             }
         } catch (e) {}
 
@@ -208,8 +217,10 @@
 
         function saveState() {
             try {
+                const now = Math.floor(Date.now() / 1000);
                 localStorage.setItem('mell_score', count.toString());
                 localStorage.setItem('mell_energy', energy.toString());
+                localStorage.setItem('mell_last_time', now.toString());
             } catch (e) {}
         }
 
@@ -218,15 +229,12 @@
             const percent = (energy / maxEnergy) * 100;
             energyBar.style.width = `${percent}%`;
 
-            // Расчет таймера до полного восстановления
             if (energy >= maxEnergy) {
                 energyTimer.innerText = "Полный бак";
             } else {
                 const secondsLeft = maxEnergy - energy;
                 const minutes = Math.floor(secondsLeft / 60);
                 const seconds = secondsLeft % 60;
-                
-                // Форматируем в вид MM:SS (например, 02:15)
                 const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 energyTimer.innerText = formattedTime;
             }
@@ -284,11 +292,14 @@
             return true;
         }
 
+        // Автоматическое пополнение каждую секунду во время игры
         setInterval(() => {
             if (energy < maxEnergy) {
                 energy = Math.min(maxEnergy, energy + 1);
                 updateEnergyUI();
                 saveState();
+            } else {
+                saveState(); // Обновляем метку времени даже при полном баке
             }
         }, 1000);
 
