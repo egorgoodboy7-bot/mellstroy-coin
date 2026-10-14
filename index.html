@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=10"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=11"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -39,7 +39,7 @@
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
-        /* Аккуратный средний размер кнопки (260px) */
+        /* Кнопка с плавной анимацией */
         .tap-btn {
             background-color: #1a2332;
             background-image: url('mellstroy.png');
@@ -57,12 +57,13 @@
             -webkit-tap-highlight-color: transparent;
             position: relative;
             touch-action: none;
-            transition: box-shadow 0.1s ease;
+            /* Плавный переход для сжатия и тени */
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.1s ease;
         }
 
-        /* Класс анимации нажатия для телефонов и ПК */
+        /* Состояние при нажатии */
         .tap-btn.pressed, .tap-btn:active {
-            transform: scale(0.92);
+            transform: scale(0.90);
             box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
         }
 
@@ -151,10 +152,10 @@
             }, 800);
         }
 
-        // Обработка касаний на телефоне с анимацией сжатия
+        // Обработка касаний (смартфоны)
         clickArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            clickArea.classList.add('pressed'); // Включаем анимацию сжатия
+            clickArea.classList.add('pressed');
 
             const touches = Array.from(e.changedTouches).slice(0, 4);
 
@@ -168,16 +169,17 @@
             triggerVibration();
         }, { passive: false });
 
-        // Возвращаем кнопку в исходное положение при отпускании пальца
-        clickArea.addEventListener('touchend', () => {
-            clickArea.classList.remove('pressed');
-        });
-        
-        clickArea.addEventListener('touchcancel', () => {
-            clickArea.classList.remove('pressed');
-        });
+        // Мягкий возврат кнопки в исходное положение с небольшой задержкой, чтобы анимация успевала проиграться
+        function releaseButton() {
+            setTimeout(() => {
+                clickArea.classList.remove('pressed');
+            }, 80);
+        }
 
-        // Резерв для ПК
+        clickArea.addEventListener('touchend', releaseButton);
+        clickArea.addEventListener('touchcancel', releaseButton);
+
+        // Резерв для ПК (мышка)
         clickArea.addEventListener('mousedown', (e) => {
             if (!('ontouchstart' in window)) {
                 count++;
