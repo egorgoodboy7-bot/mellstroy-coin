@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=11"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=12"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -39,7 +39,7 @@
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
-        /* Кнопка с плавной анимацией */
+        /* Кнопка-кликер */
         .tap-btn {
             background-color: #1a2332;
             background-image: url('mellstroy.png');
@@ -57,14 +57,26 @@
             -webkit-tap-highlight-color: transparent;
             position: relative;
             touch-action: none;
-            /* Плавный переход для сжатия и тени */
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.1s ease;
         }
 
-        /* Состояние при нажатии */
-        .tap-btn.pressed, .tap-btn:active {
-            transform: scale(0.90);
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        /* Анимация удара: уменьшение и возврат */
+        .tap-btn.animate {
+            animation: tapPunch 0.15s ease forwards;
+        }
+
+        @keyframes tapPunch {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
+            }
+            50% {
+                transform: scale(0.88);
+                box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
+            }
         }
 
         .plus-one {
@@ -134,6 +146,13 @@
             } catch (e) {}
         }
 
+        function triggerAnimation() {
+            // Перезапускаем анимацию, даже если кликают очень быстро
+            clickArea.classList.remove('animate');
+            void clickArea.offsetWidth; // трюк для сброса анимации в браузере
+            clickArea.classList.add('animate');
+        }
+
         function spawnPlusOne(clientX, clientY) {
             const rect = clickArea.getBoundingClientRect();
             const x = clientX - rect.left;
@@ -155,8 +174,7 @@
         // Обработка касаний (смартфоны)
         clickArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            clickArea.classList.add('pressed');
-
+            
             const touches = Array.from(e.changedTouches).slice(0, 4);
 
             touches.forEach((touch) => {
@@ -167,17 +185,8 @@
             scoreElement.innerText = count;
             saveScore();
             triggerVibration();
+            triggerAnimation();
         }, { passive: false });
-
-        // Мягкий возврат кнопки в исходное положение с небольшой задержкой, чтобы анимация успевала проиграться
-        function releaseButton() {
-            setTimeout(() => {
-                clickArea.classList.remove('pressed');
-            }, 80);
-        }
-
-        clickArea.addEventListener('touchend', releaseButton);
-        clickArea.addEventListener('touchcancel', releaseButton);
 
         // Резерв для ПК (мышка)
         clickArea.addEventListener('mousedown', (e) => {
@@ -187,6 +196,7 @@
                 spawnPlusOne(e.clientX, e.clientY);
                 saveScore();
                 triggerVibration();
+                triggerAnimation();
             }
         });
     </script>
