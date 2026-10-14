@@ -19,6 +19,7 @@
             margin: 0;
             user-select: none;
             -webkit-user-select: none;
+            overflow: hidden; /* Чтобы вылетающие цифры не растягивали экран */
         }
 
         h2 {
@@ -53,11 +54,35 @@
             transition: transform 0.05s ease, box-shadow 0.1s ease;
             outline: none;
             -webkit-tap-highlight-color: transparent;
+            position: relative;
         }
 
         .tap-btn:active {
             transform: scale(0.95);
             box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Стиль и анимация для вылетающей цифры +1 */
+        .plus-one {
+            position: absolute;
+            font-size: 28px;
+            font-weight: bold;
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.8);
+            pointer-events: none; /*Чтобы не мешала повторным кликам*/
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-70px) scale(1.3);
+            }
         }
     </style>
 </head>
@@ -72,24 +97,44 @@
         // Инициализация Telegram WebApp
         const tg = window.Telegram ? window.Telegram.WebApp : null;
         if (tg) {
-            tg.expand(); // Разворачиваем окно на весь экран
+            tg.expand();
         }
 
         let count = 0;
         const scoreElement = document.getElementById('score');
         const clickArea = document.getElementById('clickArea');
 
-        clickArea.addEventListener('click', () => {
+        clickArea.addEventListener('click', (event) => {
             count++;
             scoreElement.innerText = count;
 
-            // Вызываем легкую вибрацию Telegram HapticFeedback
+            // 1. Вибрация
             if (tg && tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             } else if (navigator.vibrate) {
-                // Запасной вариант для обычных браузеров
                 navigator.vibrate(10);
             }
+
+            // 2. Создаем элемент "+1"
+            const plusOne = document.createElement('div');
+            plusOne.classList.add('plus-one');
+            plusOne.innerText = '+1';
+
+            // Определяем координаты клика
+            const rect = clickArea.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Ставим цифру именно там, куда нажал пользователь
+            plusOne.style.left = `${x}px`;
+            plusOne.style.top = `${y}px`;
+
+            clickArea.appendChild(plusOne);
+
+            // Удаляем элемент из кода после завершения анимации (через 800мс)
+            setTimeout(() => {
+                plusOne.remove();
+            }, 800);
         });
     </script>
 </body>
