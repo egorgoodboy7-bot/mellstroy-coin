@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=9"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=10"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -14,7 +14,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding-top: 30px;
+            padding-top: 35px;
             height: 100vh;
             margin: 0;
             user-select: none;
@@ -39,7 +39,7 @@
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
-        /* Большая кнопка-кликер (увеличена примерно в 1.6 раза) */
+        /* Аккуратный средний размер кнопки (260px) */
         .tap-btn {
             background-color: #1a2332;
             background-image: url('mellstroy.png');
@@ -47,27 +47,28 @@
             background-position: calc(50% - 10px) 50%;
             background-repeat: no-repeat;
             
-            border: 5px solid #00f2fe;
+            border: 4px solid #00f2fe;
             border-radius: 50%;
-            width: 350px;
-            height: 350px;
+            width: 260px;
+            height: 260px;
             cursor: pointer;
-            box-shadow: 0 0 40px rgba(0, 242, 254, 0.25);
-            transition: transform 0.05s ease, box-shadow 0.1s ease;
+            box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
             outline: none;
             -webkit-tap-highlight-color: transparent;
             position: relative;
             touch-action: none;
+            transition: box-shadow 0.1s ease;
         }
 
-        .tap-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 0 20px rgba(0, 242, 254, 0.5);
+        /* Класс анимации нажатия для телефонов и ПК */
+        .tap-btn.pressed, .tap-btn:active {
+            transform: scale(0.92);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
         }
 
         .plus-one {
             position: absolute;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             color: #00f2fe;
             text-shadow: 0 0 10px rgba(0, 242, 254, 0.8);
@@ -83,7 +84,7 @@
             }
             100% {
                 opacity: 0;
-                transform: translateY(-80px) scale(1.4);
+                transform: translateY(-70px) scale(1.3);
             }
         }
     </style>
@@ -150,8 +151,11 @@
             }, 800);
         }
 
+        // Обработка касаний на телефоне с анимацией сжатия
         clickArea.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            clickArea.classList.add('pressed'); // Включаем анимацию сжатия
+
             const touches = Array.from(e.changedTouches).slice(0, 4);
 
             touches.forEach((touch) => {
@@ -164,6 +168,16 @@
             triggerVibration();
         }, { passive: false });
 
+        // Возвращаем кнопку в исходное положение при отпускании пальца
+        clickArea.addEventListener('touchend', () => {
+            clickArea.classList.remove('pressed');
+        });
+        
+        clickArea.addEventListener('touchcancel', () => {
+            clickArea.classList.remove('pressed');
+        });
+
+        // Резерв для ПК
         clickArea.addEventListener('mousedown', (e) => {
             if (!('ontouchstart' in window)) {
                 count++;
