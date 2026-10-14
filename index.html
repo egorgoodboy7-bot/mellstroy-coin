@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=28"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=29"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -343,7 +343,7 @@
                 <div class="energy-bar-fill" id="energyBar"></div>
             </div>
             <div class="energy-footer">
-                <div class="energy-regen">+1 / сек</div>
+                <div class="energy-regen" id="energyRegenText">+1 / сек</div>
                 <div class="energy-timer" id="energyTimer">Полный бак</div>
             </div>
         </div>
@@ -365,6 +365,13 @@
                     <div class="card-desc">+250 к макс. энергии</div>
                 </div>
                 <button class="card-btn" id="btnBuyEnergy">750$</button>
+            </div>
+            <div class="card">
+                <div class="card-info">
+                    <div class="card-title">Восстановление энергии</div>
+                    <div class="card-desc" id="regenDesc">+1 к скорости восстановления</div>
+                </div>
+                <button class="card-btn" id="btnBuyRegen">500$</button>
             </div>
         </div>
     </div>
@@ -434,8 +441,11 @@
         let energy = 500;
         let maxEnergy = 500;
         let tapPower = 1;
+        let regenRate = 1;
+
         let multitapCost = 100;
         let energyCost = 750;
+        let regenCost = 500;
 
         function loadGame() {
             try {
@@ -451,16 +461,24 @@
                 const savedPower = localStorage.getItem('mell_tap_power');
                 tapPower = savedPower ? parseInt(savedPower, 10) : 1;
 
+                const savedRegenRate = localStorage.getItem('mell_regen_rate');
+                regenRate = savedRegenRate ? parseInt(savedRegenRate, 10) : 1;
+
                 const savedMultitapCost = localStorage.getItem('mell_multitap_cost');
                 multitapCost = savedMultitapCost ? parseInt(savedMultitapCost, 10) : 100;
 
                 const savedEnergyCost = localStorage.getItem('mell_energy_cost');
                 energyCost = savedEnergyCost ? parseInt(savedEnergyCost, 10) : 750;
 
+                const savedRegenCost = localStorage.getItem('mell_regen_cost');
+                regenCost = savedRegenCost ? parseInt(savedRegenCost, 10) : 500;
+
                 const lastTime = localStorage.getItem('mell_last_time');
                 if (lastTime) {
                     const passed = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
-                    if (passed > 0) energy = Math.min(maxEnergy, energy + passed);
+                    if (passed > 0) {
+                        energy = Math.min(maxEnergy, energy + (passed * regenRate));
+                    }
                 }
             } catch (e) {}
         }
@@ -472,9 +490,14 @@
         const energyText = document.getElementById('energyText');
         const energyBar = document.getElementById('energyBar');
         const energyTimer = document.getElementById('energyTimer');
+        const energyRegenText = document.getElementById('energyRegenText');
+
         const btnBuyMultitap = document.getElementById('btnBuyMultitap');
         const btnBuyEnergy = document.getElementById('btnBuyEnergy');
+        const btnBuyRegen = document.getElementById('btnBuyRegen');
+
         const multitapDesc = document.getElementById('multitapDesc');
+        const regenDesc = document.getElementById('regenDesc');
         
         const resetModal = document.getElementById('resetModal');
         const btnResetProgress = document.getElementById('btnResetProgress');
@@ -501,8 +524,10 @@
                 localStorage.setItem('mell_energy', energy);
                 localStorage.setItem('mell_max_energy', maxEnergy);
                 localStorage.setItem('mell_tap_power', tapPower);
+                localStorage.setItem('mell_regen_rate', regenRate);
                 localStorage.setItem('mell_multitap_cost', multitapCost);
                 localStorage.setItem('mell_energy_cost', energyCost);
+                localStorage.setItem('mell_regen_cost', regenCost);
                 localStorage.setItem('mell_last_time', Math.floor(Date.now() / 1000));
             } catch (e) {}
         }
@@ -511,17 +536,22 @@
             scoreEl.innerText = count + '$';
             energyText.innerText = energy + ' / ' + maxEnergy;
             energyBar.style.width = (energy / maxEnergy * 100) + '%';
+            energyRegenText.innerText = `+${regenRate} / сек`;
 
             multitapDesc.innerText = `+${tapPower}$ за клик`;
+            regenDesc.innerText = `Текущая скорость: +${regenRate}/сек`;
+
             btnBuyMultitap.innerText = multitapCost + '$';
             btnBuyEnergy.innerText = energyCost + '$';
+            btnBuyRegen.innerText = regenCost + '$';
 
             if (energy >= maxEnergy) {
                 energyTimer.innerText = "Полный бак";
             } else {
                 const left = maxEnergy - energy;
-                const m = Math.floor(left / 60).toString().padStart(2, '0');
-                const s = (left % 60).toString().padStart(2, '0');
+                const secondsLeft = Math.ceil(left / regenRate);
+                const m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+                const s = (secondsLeft % 60).toString().padStart(2, '0');
                 energyTimer.innerText = m + ':' + s;
             }
         }
@@ -551,12 +581,26 @@
             }
         });
 
-        // Покупка запаса энергии
+        // Покупка запаса энергии (+40% к стоимости)
         btnBuyEnergy.addEventListener('click', () => {
             if (count >= energyCost) {
                 count -= energyCost;
                 maxEnergy += 250;
                 energyCost = Math.round(energyCost * 1.4);
+                saveGame();
+                updateUI();
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+            } else {
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); } catch(e){}
+            }
+        });
+
+        // Покупка восстановления энергии (+40% к стоимости)
+        btnBuyRegen.addEventListener('click', () => {
+            if (count >= regenCost) {
+                count -= regenCost;
+                regenRate++;
+                regenCost = Math.round(regenCost * 1.4);
                 saveGame();
                 updateUI();
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -583,8 +627,11 @@
             energy = 500;
             maxEnergy = 500;
             tapPower = 1;
+            regenRate = 1;
+
             multitapCost = 100;
             energyCost = 750;
+            regenCost = 500;
 
             saveGame();
             updateUI();
@@ -613,10 +660,10 @@
             } catch (err) {}
         });
 
-        // Восстановление энергии каждую секунду
+        // Восстановление энергии с учётом текущего уровня регенерации
         setInterval(() => {
             if (energy < maxEnergy) {
-                energy = Math.min(maxEnergy, energy + 1);
+                energy = Math.min(maxEnergy, energy + regenRate);
                 updateUI();
                 saveGame();
             }
