@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=29"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=31"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -343,7 +343,7 @@
                 <div class="energy-bar-fill" id="energyBar"></div>
             </div>
             <div class="energy-footer">
-                <div class="energy-regen" id="energyRegenText">+1 / сек</div>
+                <div class="energy-regen" id="energyRegenText">+1 / 1сек</div>
                 <div class="energy-timer" id="energyTimer">Полный бак</div>
             </div>
         </div>
@@ -369,7 +369,7 @@
             <div class="card">
                 <div class="card-info">
                     <div class="card-title">Восстановление энергии</div>
-                    <div class="card-desc" id="regenDesc">+1 к скорости восстановления</div>
+                    <div class="card-desc" id="regenDesc">Ускорить регенерацию</div>
                 </div>
                 <button class="card-btn" id="btnBuyRegen">500$</button>
             </div>
@@ -441,7 +441,7 @@
         let energy = 500;
         let maxEnergy = 500;
         let tapPower = 1;
-        let regenRate = 1;
+        let regenLevel = 0; // 0 = 1 ед/сек (1/1сек)
 
         let multitapCost = 100;
         let energyCost = 750;
@@ -461,8 +461,8 @@
                 const savedPower = localStorage.getItem('mell_tap_power');
                 tapPower = savedPower ? parseInt(savedPower, 10) : 1;
 
-                const savedRegenRate = localStorage.getItem('mell_regen_rate');
-                regenRate = savedRegenRate ? parseInt(savedRegenRate, 10) : 1;
+                const savedRegenLevel = localStorage.getItem('mell_regen_level');
+                regenLevel = savedRegenLevel ? parseInt(savedRegenLevel, 10) : 0;
 
                 const savedMultitapCost = localStorage.getItem('mell_multitap_cost');
                 multitapCost = savedMultitapCost ? parseInt(savedMultitapCost, 10) : 100;
@@ -475,12 +475,23 @@
 
                 const lastTime = localStorage.getItem('mell_last_time');
                 if (lastTime) {
-                    const passed = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
-                    if (passed > 0) {
-                        energy = Math.min(maxEnergy, energy + (passed * regenRate));
+                    const passedSec = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
+                    if (passedSec > 0) {
+                        // Рассчитываем восстановление с учетом уровня регенерации за прошедшие секунды
+                        const addedEnergy = Math.floor(passedSec * getRegenPerSecond());
+                        energy = Math.min(maxEnergy, energy + addedEnergy);
                     }
                 }
             } catch (e) {}
+        }
+
+        // Функция получения прироста энергии в секунду на основе уровня
+        function getRegenPerSecond() {
+            // Уровень 0: 1/сек (каждую 1 сек)
+            // Уровень 1: 1/0.5сек (2 в сек)
+            // Уровень 2: 1/0.333сек (3 в сек)
+            // Уровень 3: 1/0.25сек (4 в сек)
+            return regenLevel + 1;
         }
 
         loadGame();
@@ -524,7 +535,7 @@
                 localStorage.setItem('mell_energy', energy);
                 localStorage.setItem('mell_max_energy', maxEnergy);
                 localStorage.setItem('mell_tap_power', tapPower);
-                localStorage.setItem('mell_regen_rate', regenRate);
+                localStorage.setItem('mell_regen_level', regenLevel);
                 localStorage.setItem('mell_multitap_cost', multitapCost);
                 localStorage.setItem('mell_energy_cost', energyCost);
                 localStorage.setItem('mell_regen_cost', regenCost);
@@ -536,10 +547,31 @@
             scoreEl.innerText = count + '$';
             energyText.innerText = energy + ' / ' + maxEnergy;
             energyBar.style.width = (energy / maxEnergy * 100) + '%';
-            energyRegenText.innerText = `+${regenRate} / сек`;
 
+            // Красивый вывод формата 1/сек, 1/0.5сек, 1/0.33сек и т.д.
+            let speedText = "";
+            let descText = "";
+            if (regenLevel === 0) {
+                speedText = "1/1сек";
+                descText = "1 ед. каждые 1 сек";
+            } else if (regenLevel === 1) {
+                speedText = "1/0.5сек";
+                descText = "1 ед. каждые 0.5 сек";
+            } else if (regenLevel === 2) {
+                speedText = "1/0.33сек";
+                descText = "1 ед. каждые 0.33 сек";
+            } else if (regenLevel === 3) {
+                speedText = "1/0.25сек";
+                descText = "1 ед. каждые 0.25 сек";
+            } else {
+                const interval = (1 / (regenLevel + 1)).toFixed(2);
+                speedText = `1/${interval}сек`;
+                descText = `1 ед. каждые ${interval} сек`;
+            }
+
+            energyRegenText.innerText = speedText;
+            regenDesc.innerText = descText;
             multitapDesc.innerText = `+${tapPower}$ за клик`;
-            regenDesc.innerText = `Текущая скорость: +${regenRate}/сек`;
 
             btnBuyMultitap.innerText = multitapCost + '$';
             btnBuyEnergy.innerText = energyCost + '$';
@@ -549,7 +581,8 @@
                 energyTimer.innerText = "Полный бак";
             } else {
                 const left = maxEnergy - energy;
-                const secondsLeft = Math.ceil(left / regenRate);
+                const rps = getRegenPerSecond();
+                const secondsLeft = Math.ceil(left / rps);
                 const m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
                 const s = (secondsLeft % 60).toString().padStart(2, '0');
                 energyTimer.innerText = m + ':' + s;
@@ -599,7 +632,7 @@
         btnBuyRegen.addEventListener('click', () => {
             if (count >= regenCost) {
                 count -= regenCost;
-                regenRate++;
+                regenLevel++;
                 regenCost = Math.round(regenCost * 1.4);
                 saveGame();
                 updateUI();
@@ -627,7 +660,7 @@
             energy = 500;
             maxEnergy = 500;
             tapPower = 1;
-            regenRate = 1;
+            regenLevel = 0;
 
             multitapCost = 100;
             energyCost = 750;
@@ -660,10 +693,11 @@
             } catch (err) {}
         });
 
-        // Восстановление энергии с учётом текущего уровня регенерации
+        // Восстановление энергии каждую секунду на основе текущего уровня регенерации
         setInterval(() => {
             if (energy < maxEnergy) {
-                energy = Math.min(maxEnergy, energy + regenRate);
+                const addAmount = getRegenPerSecond();
+                energy = Math.min(maxEnergy, energy + addAmount);
                 updateUI();
                 saveGame();
             }
