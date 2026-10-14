@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=6"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=7"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -13,26 +13,29 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* Поднимаем элементы к верху с небольшим отступом */
+            justify-content: flex-start;
+            padding-top: 40px;
             height: 100vh;
             margin: 0;
             user-select: none;
             -webkit-user-select: none;
             overflow: hidden;
+            box-sizing: border-box;
         }
 
         h2 {
-            font-size: 18px;
+            font-size: 16px;
             letter-spacing: 2px;
             color: #8a939e;
             margin-bottom: 5px;
         }
 
         .score {
-            font-size: 48px;
+            font-size: 42px;
             font-weight: bold;
             color: #00f2fe;
-            margin-bottom: 40px;
+            margin-bottom: 25px;
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
@@ -97,7 +100,6 @@
             try { tg.expand(); } catch (e) {}
         }
 
-        // Безопасное считывание баланса из localStorage
         let count = 0;
         try {
             const saved = localStorage.getItem('mell_score');
@@ -111,19 +113,16 @@
         const scoreElement = document.getElementById('score');
         const clickArea = document.getElementById('clickArea');
 
-        // Выводим начальный баланс
         scoreElement.innerText = count;
 
         function handleTap(event) {
             count++;
             scoreElement.innerText = count;
 
-            // Сохранение баланса
             try {
                 localStorage.setItem('mell_score', count.toString());
             } catch (e) {}
 
-            // Вибрация
             try {
                 if (tg && tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
@@ -132,7 +131,6 @@
                 }
             } catch (e) {}
 
-            // Координаты клика/тапа для "+1"
             const rect = clickArea.getBoundingClientRect();
             let clientX = event.clientX;
             let clientY = event.clientY;
@@ -148,7 +146,6 @@
             const x = clientX - rect.left;
             const y = clientY - rect.top;
 
-            // Вылетающая цифра "+1"
             const plusOne = document.createElement('div');
             plusOne.classList.add('plus-one');
             plusOne.innerText = '+1';
@@ -162,7 +159,6 @@
             }, 800);
         }
 
-        // Поддержка кликов и тапов
         clickArea.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             handleTap(e);
