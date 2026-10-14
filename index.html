@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=23"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=24"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -192,11 +192,16 @@
             cursor: pointer;
         }
 
+        .card-btn.danger {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            color: #ffffff;
+        }
+
         .card-btn:active {
             transform: scale(0.95);
         }
 
-        /* Меню навигации */
+        /* Меню навигации (4 вкладки) */
         .navbar {
             position: fixed;
             bottom: 0;
@@ -217,16 +222,82 @@
             align-items: center;
             gap: 2px;
             color: #6b7683;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             cursor: pointer;
-            width: 33%;
-            padding: 8px 0;
+            width: 25%;
+            padding: 6px 0;
             -webkit-tap-highlight-color: transparent;
         }
 
         .nav-item.active {
             color: #00f2fe;
+        }
+
+        /* Всплывающее окно (Модальное окно) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: #1a2332;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-btn.confirm {
+            background: #ff4b2b;
+            color: #ffffff;
+        }
+
+        .modal-btn.cancel {
+            background: #2a3b55;
+            color: #ffffff;
         }
 
         .plus-one {
@@ -253,7 +324,7 @@
         <div class="score" id="score">0$</div>
     </div>
 
-    <!-- Вкладка 1 -->
+    <!-- Вкладка 1: Главная -->
     <div class="tab-content active" id="tab-main">
         <div class="tap-btn" id="clickArea"></div>
 
@@ -272,7 +343,7 @@
         </div>
     </div>
 
-    <!-- Вкладка 2 -->
+    <!-- Вкладка 2: Улучшения -->
     <div class="tab-content" id="tab-upgrades">
         <div class="card-list">
             <div class="card">
@@ -292,7 +363,7 @@
         </div>
     </div>
 
-    <!-- Вкладка 3 -->
+    <!-- Вкладка 3: Задания -->
     <div class="tab-content" id="tab-tasks">
         <div class="card-list">
             <div class="card">
@@ -305,7 +376,20 @@
         </div>
     </div>
 
-    <!-- Нижняя панель -->
+    <!-- Вкладка 4: Настройки -->
+    <div class="tab-content" id="tab-settings">
+        <div class="card-list">
+            <div class="card">
+                <div class="card-info">
+                    <div class="card-title">Сброс прогресса</div>
+                    <div class="card-desc">Удалить все монеты и улучшения</div>
+                </div>
+                <button class="card-btn danger" id="btnResetProgress">Сбросить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Нижняя панель навигации -->
     <div class="navbar">
         <div class="nav-item active" onclick="openTab('main', this)">
             <span>🏠</span>
@@ -318,6 +402,21 @@
         <div class="nav-item" onclick="openTab('tasks', this)">
             <span>📋</span>
             <span>Задания</span>
+        </div>
+        <div class="nav-item" onclick="openTab('settings', this)">
+            <span>⚙️</span>
+            <span>Настройки</span>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения сброса -->
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal-card">
+            <div class="modal-title">Вы точно хотите сбросить весь прогресс?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="btnModalYes">Да</button>
+                <button class="modal-btn cancel" id="btnModalNo">Нет</button>
+            </div>
         </div>
     </div>
 
@@ -332,31 +431,35 @@
         let multitapCost = 100;
         let energyCost = 200;
 
-        try {
-            const savedScore = localStorage.getItem('mell_score');
-            if (savedScore) count = parseInt(savedScore, 10);
+        function loadGame() {
+            try {
+                const savedScore = localStorage.getItem('mell_score');
+                count = savedScore ? parseInt(savedScore, 10) : 0;
 
-            const savedEnergy = localStorage.getItem('mell_energy');
-            if (savedEnergy) energy = parseInt(savedEnergy, 10);
+                const savedEnergy = localStorage.getItem('mell_energy');
+                energy = savedEnergy ? parseInt(savedEnergy, 10) : 500;
 
-            const savedMaxEnergy = localStorage.getItem('mell_max_energy');
-            if (savedMaxEnergy) maxEnergy = parseInt(savedMaxEnergy, 10);
+                const savedMaxEnergy = localStorage.getItem('mell_max_energy');
+                maxEnergy = savedMaxEnergy ? parseInt(savedMaxEnergy, 10) : 500;
 
-            const savedPower = localStorage.getItem('mell_tap_power');
-            if (savedPower) tapPower = parseInt(savedPower, 10);
+                const savedPower = localStorage.getItem('mell_tap_power');
+                tapPower = savedPower ? parseInt(savedPower, 10) : 1;
 
-            const savedMultitapCost = localStorage.getItem('mell_multitap_cost');
-            if (savedMultitapCost) multitapCost = parseInt(savedMultitapCost, 10);
+                const savedMultitapCost = localStorage.getItem('mell_multitap_cost');
+                multitapCost = savedMultitapCost ? parseInt(savedMultitapCost, 10) : 100;
 
-            const savedEnergyCost = localStorage.getItem('mell_energy_cost');
-            if (savedEnergyCost) energyCost = parseInt(savedEnergyCost, 10);
+                const savedEnergyCost = localStorage.getItem('mell_energy_cost');
+                energyCost = savedEnergyCost ? parseInt(savedEnergyCost, 10) : 200;
 
-            const lastTime = localStorage.getItem('mell_last_time');
-            if (lastTime) {
-                const passed = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
-                if (passed > 0) energy = Math.min(maxEnergy, energy + passed);
-            }
-        } catch (e) {}
+                const lastTime = localStorage.getItem('mell_last_time');
+                if (lastTime) {
+                    const passed = Math.floor(Date.now() / 1000) - parseInt(lastTime, 10);
+                    if (passed > 0) energy = Math.min(maxEnergy, energy + passed);
+                }
+            } catch (e) {}
+        }
+
+        loadGame();
 
         const scoreEl = document.getElementById('score');
         const clickArea = document.getElementById('clickArea');
@@ -366,8 +469,12 @@
         const btnBuyMultitap = document.getElementById('btnBuyMultitap');
         const btnBuyEnergy = document.getElementById('btnBuyEnergy');
         const multitapDesc = document.getElementById('multitapDesc');
+        
+        const resetModal = document.getElementById('resetModal');
+        const btnResetProgress = document.getElementById('btnResetProgress');
+        const btnModalYes = document.getElementById('btnModalYes');
+        const btnModalNo = document.getElementById('btnModalNo');
 
-        scoreEl.innerText = count + '$';
         updateUI();
 
         function openTab(name, element) {
@@ -429,7 +536,7 @@
             if (count >= multitapCost) {
                 count -= multitapCost;
                 tapPower++;
-                multitapCost = Math.round(multitapCost * 1.2); // +20% к цене
+                multitapCost = Math.round(multitapCost * 1.2);
                 saveGame();
                 updateUI();
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -438,13 +545,13 @@
             }
         });
 
-        // Покупка запаса энергии
+        // Покупка энергии
         btnBuyEnergy.addEventListener('click', () => {
             if (count >= energyCost) {
                 count -= energyCost;
                 maxEnergy += 250;
-                energy = maxEnergy; // Полный бак при покупке
-                energyCost = Math.round(energyCost * 1.2); // +20% к цене
+                energy = maxEnergy;
+                energyCost = Math.round(energyCost * 1.2);
                 saveGame();
                 updateUI();
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -453,7 +560,35 @@
             }
         });
 
-        // Клик по кнопке (тратится ровно 1 энергии, а баланс растет на tapPower)
+        // Логика модального окна сброса
+        btnResetProgress.addEventListener('click', () => {
+            resetModal.classList.add('active');
+        });
+
+        btnModalNo.addEventListener('click', () => {
+            resetModal.classList.remove('active');
+        });
+
+        btnModalYes.addEventListener('click', () => {
+            try {
+                localStorage.clear();
+            } catch(e) {}
+            
+            count = 0;
+            energy = 500;
+            maxEnergy = 500;
+            tapPower = 1;
+            multitapCost = 100;
+            energyCost = 200;
+
+            saveGame();
+            updateUI();
+            resetModal.classList.remove('active');
+
+            try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning'); } catch(e){}
+        });
+
+        // Клик по кнопке Меллстроя
         clickArea.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             if (energy < 1) {
@@ -462,7 +597,7 @@
             }
 
             count += tapPower;
-            energy -= 1; // Всегда тратится ровно 1 ед. энергии
+            energy -= 1;
             updateUI();
             saveGame();
             spawnPlus(e.clientX, e.clientY, tapPower);
