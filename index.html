@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=21"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=22"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -192,6 +192,10 @@
             cursor: pointer;
         }
 
+        .card-btn:active {
+            transform: scale(0.95);
+        }
+
         /* Меню навигации */
         .navbar {
             position: fixed;
@@ -246,7 +250,7 @@
 
     <div class="header">
         <h2>БАЛАНС</h2>
-        <div class="score" id="score">0</div>
+        <div class="score" id="score">0$</div>
     </div>
 
     <!-- Вкладка 1 -->
@@ -276,14 +280,14 @@
                     <div class="card-title">Мультитап</div>
                     <div class="card-desc">+1 балл за клик</div>
                 </div>
-                <button class="card-btn">100 🪙</button>
+                <button class="card-btn" id="btnBuyMultitap">100$</button>
             </div>
             <div class="card">
                 <div class="card-info">
                     <div class="card-title">Запас энергии</div>
-                    <div class="card-desc">+500 к макс. энергии</div>
+                    <div class="card-desc">+250 к макс. энергии</div>
                 </div>
-                <button class="card-btn">200 🪙</button>
+                <button class="card-btn" id="btnBuyEnergy">200$</button>
             </div>
         </div>
     </div>
@@ -294,7 +298,7 @@
             <div class="card">
                 <div class="card-info">
                     <div class="card-title">Подписаться на канал</div>
-                    <div class="card-desc">+1,000 монет</div>
+                    <div class="card-desc">+1,000$ на баланс</div>
                 </div>
                 <button class="card-btn">Выполнить</button>
             </div>
@@ -323,7 +327,8 @@
 
         let count = 0;
         let energy = 500;
-        const maxEnergy = 500;
+        let maxEnergy = 500;
+        let tapPower = 1;
 
         try {
             const savedScore = localStorage.getItem('mell_score');
@@ -331,6 +336,12 @@
 
             const savedEnergy = localStorage.getItem('mell_energy');
             if (savedEnergy) energy = parseInt(savedEnergy, 10);
+
+            const savedMaxEnergy = localStorage.getItem('mell_max_energy');
+            if (savedMaxEnergy) maxEnergy = parseInt(savedMaxEnergy, 10);
+
+            const savedPower = localStorage.getItem('mell_tap_power');
+            if (savedPower) tapPower = parseInt(savedPower, 10);
 
             const lastTime = localStorage.getItem('mell_last_time');
             if (lastTime) {
@@ -345,10 +356,9 @@
         const energyBar = document.getElementById('energyBar');
         const energyTimer = document.getElementById('energyTimer');
 
-        scoreEl.innerText = count;
+        scoreEl.innerText = count + '$';
         updateUI();
 
-        // Переключение вкладок
         function openTab(name, element) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -365,12 +375,14 @@
             try {
                 localStorage.setItem('mell_score', count);
                 localStorage.setItem('mell_energy', energy);
+                localStorage.setItem('mell_max_energy', maxEnergy);
+                localStorage.setItem('mell_tap_power', tapPower);
                 localStorage.setItem('mell_last_time', Math.floor(Date.now() / 1000));
             } catch (e) {}
         }
 
         function updateUI() {
-            scoreEl.innerText = count;
+            scoreEl.innerText = count + '$';
             energyText.innerText = energy + ' / ' + maxEnergy;
             energyBar.style.width = (energy / maxEnergy * 100) + '%';
 
@@ -384,30 +396,59 @@
             }
         }
 
-        function spawnPlus(x, y) {
+        function spawnPlus(x, y, text) {
             const rect = clickArea.getBoundingClientRect();
             const div = document.createElement('div');
             div.className = 'plus-one';
-            div.innerText = '+1';
+            div.innerText = '+' + text;
             div.style.left = (x - rect.left) + 'px';
             div.style.top = (y - rect.top) + 'px';
             clickArea.appendChild(div);
             setTimeout(() => div.remove(), 700);
         }
 
-        // Клик по кнопке (поддержка мыши и тач-скринов)
+        // Покупка улучшений
+        document.getElementById('btnBuyMultitap').addEventListener('click', () => {
+            const cost = 100;
+            if (count >= cost) {
+                count -= cost;
+                tapPower++;
+                saveGame();
+                updateUI();
+                document.querySelector('#btnBuyMultitap').previousElementSibling.querySelector('.card-desc').innerText = `+${tapPower} балла за клик`;
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+            } else {
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); } catch(e){}
+            }
+        });
+
+        document.getElementById('btnBuyEnergy').addEventListener('click', () => {
+            const cost = 200;
+            if (count >= cost) {
+                count -= cost;
+                maxEnergy += 250;
+                energy = maxEnergy; // Восстанавливаем до максимума при покупке
+                saveGame();
+                updateUI();
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+            } else {
+                try { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); } catch(e){}
+            }
+        });
+
+        // Клик по кнопке
         clickArea.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            if (energy <= 0) {
+            if (energy < tapPower) {
                 try { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy'); } catch(err){}
                 return;
             }
 
-            count++;
-            energy--;
+            count += tapPower;
+            energy -= tapPower;
             updateUI();
             saveGame();
-            spawnPlus(e.clientX, e.clientY);
+            spawnPlus(e.clientX, e.clientY, tapPower);
 
             try {
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
