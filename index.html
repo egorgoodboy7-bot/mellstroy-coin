@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=7"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=8"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -13,7 +13,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Поднимаем элементы к верху с небольшим отступом */
             justify-content: flex-start;
             padding-top: 40px;
             height: 100vh;
@@ -22,6 +21,7 @@
             -webkit-user-select: none;
             overflow: hidden;
             box-sizing: border-box;
+            touch-action: manipulation;
         }
 
         h2 {
@@ -56,7 +56,7 @@
             outline: none;
             -webkit-tap-highlight-color: transparent;
             position: relative;
-            touch-action: manipulation;
+            touch-action: none; /* Отключаем стандартный зум и жесты */
         }
 
         .tap-btn:active {
@@ -115,14 +115,13 @@
 
         scoreElement.innerText = count;
 
-        function handleTap(event) {
-            count++;
-            scoreElement.innerText = count;
-
+        function saveScore() {
             try {
                 localStorage.setItem('mell_score', count.toString());
             } catch (e) {}
+        }
 
+        function triggerVibration() {
             try {
                 if (tg && tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
@@ -130,19 +129,10 @@
                     navigator.vibrate(10);
                 }
             } catch (e) {}
+        }
 
+        function spawnPlusOne(clientX, clientY) {
             const rect = clickArea.getBoundingClientRect();
-            let clientX = event.clientX;
-            let clientY = event.clientY;
-
-            if (event.touches && event.touches.length > 0) {
-                clientX = event.touches[0].clientX;
-                clientY = event.touches[0].clientY;
-            } else if (!clientX && !clientY) {
-                clientX = rect.left + rect.width / 2;
-                clientY = rect.top + rect.height / 2;
-            }
-
             const x = clientX - rect.left;
             const y = clientY - rect.top;
 
@@ -159,9 +149,33 @@
             }, 800);
         }
 
-        clickArea.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            handleTap(e);
+        // Обработка мультитача на смартфонах (touchstart)
+        clickArea.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Предотвращаем стандартное поведение (зум/скролл)
+
+            // Берём до 4 пальцев за одно касание
+            const touches = Array.from(e.changedTouches).slice(0, 4);
+
+            touches.forEach((touch) => {
+                count++;
+                spawnPlusOne(touch.clientX, touch.clientY);
+            });
+
+            scoreElement.innerText = count;
+            saveScore();
+            triggerVibration();
+        }, { passive: false });
+
+        // Резервный клик мышкой для ПК
+        clickArea.addEventListener('mousedown', (e) => {
+            // Если это не тач-устройство
+            if (!('ontouchstart' in window)) {
+                count++;
+                scoreElement.innerText = count;
+                spawnPlusOne(e.clientX, e.clientY);
+                saveScore();
+                triggerVibration();
+            }
         });
     </script>
 </body>
