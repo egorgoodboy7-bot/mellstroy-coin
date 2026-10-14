@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=25"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=26"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -545,12 +545,12 @@
             }
         });
 
-        // Покупка энергии (+40% к стоимости)
+        // Покупка запаса энергии (увеличивает лимит, а текущая энергия продолжает восстанавливаться дальше)
         btnBuyEnergy.addEventListener('click', () => {
             if (count >= energyCost) {
                 count -= energyCost;
                 maxEnergy += 250;
-                energy = maxEnergy;
+                // energy не сбрасываем в maxEnergy — она остаётся прежней и наполняется по 1 ед/сек
                 energyCost = Math.round(energyCost * 1.4);
                 saveGame();
                 updateUI();
