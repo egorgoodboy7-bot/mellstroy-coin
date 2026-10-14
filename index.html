@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=12"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=13"></script>
     <style>
         body {
             background-color: #0d0f12;
@@ -14,7 +14,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding-top: 35px;
+            padding-top: 30px;
             height: 100vh;
             margin: 0;
             user-select: none;
@@ -25,17 +25,17 @@
         }
 
         h2 {
-            font-size: 16px;
+            font-size: 15px;
             letter-spacing: 2px;
             color: #8a939e;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .score {
-            font-size: 42px;
+            font-size: 40px;
             font-weight: bold;
             color: #00f2fe;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
@@ -49,8 +49,8 @@
             
             border: 4px solid #00f2fe;
             border-radius: 50%;
-            width: 260px;
-            height: 260px;
+            width: 250px;
+            height: 250px;
             cursor: pointer;
             box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
             outline: none;
@@ -59,24 +59,50 @@
             touch-action: none;
         }
 
-        /* Анимация удара: уменьшение и возврат */
         .tap-btn.animate {
             animation: tapPunch 0.15s ease forwards;
         }
 
         @keyframes tapPunch {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
-            }
-            50% {
-                transform: scale(0.88);
-                box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
-            }
+            0% { transform: scale(1); }
+            50% { transform: scale(0.88); }
+            100% { transform: scale(1); }
+        }
+
+        /* Блок шкалы энергии под кнопкой */
+        .energy-container {
+            width: 260px;
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .energy-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 14px;
+            font-weight: bold;
+            color: #8a939e;
+            margin-bottom: 8px;
+        }
+
+        .energy-bar-bg {
+            width: 100%;
+            height: 14px;
+            background-color: #1a2332;
+            border-radius: 7px;
+            overflow: hidden;
+            border: 2px solid #2a3b55;
+        }
+
+        .energy-bar-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            border-radius: 5px;
+            transition: width 0.2s linear;
         }
 
         .plus-one {
@@ -109,6 +135,17 @@
 
     <div class="tap-btn" id="clickArea"></div>
 
+    <!-- Шкала энергии -->
+    <div class="energy-container">
+        <div class="energy-info">
+            <span>⚡ ЭНЕРГИЯ</span>
+            <span id="energyText">500 / 500</span>
+        </div>
+        <div class="energy-bar-bg">
+            <div class="energy-bar-fill" id="energyBar"></div>
+        </div>
+    </div>
+
     <script>
         const tg = window.Telegram ? window.Telegram.WebApp : null;
         if (tg) {
@@ -116,30 +153,46 @@
         }
 
         let count = 0;
+        let energy = 500;
+        const maxEnergy = 500;
+
+        // Загрузка сохраненного баланса
         try {
-            const saved = localStorage.getItem('mell_score');
-            if (saved !== null && !isNaN(saved)) {
-                count = parseInt(saved, 10);
+            const savedScore = localStorage.getItem('mell_score');
+            if (savedScore !== null && !isNaN(savedScore)) {
+                count = parseInt(savedScore, 10);
             }
-        } catch (e) {
-            console.log("Ошибка чтения localStorage:", e);
-        }
+            const savedEnergy = localStorage.getItem('mell_energy');
+            if (savedEnergy !== null && !isNaN(savedEnergy)) {
+                energy = parseInt(savedEnergy, 10);
+            }
+        } catch (e) {}
 
         const scoreElement = document.getElementById('score');
         const clickArea = document.getElementById('clickArea');
+        const energyText = document.getElementById('energyText');
+        const energyBar = document.getElementById('energyBar');
 
         scoreElement.innerText = count;
+        updateEnergyUI();
 
-        function saveScore() {
+        function saveState() {
             try {
                 localStorage.setItem('mell_score', count.toString());
+                localStorage.setItem('mell_energy', energy.toString());
             } catch (e) {}
         }
 
-        function triggerVibration() {
+        function updateEnergyUI() {
+            energyText.innerText = `${energy} / ${maxEnergy}`;
+            const percent = (energy / maxEnergy) * 100;
+            energyBar.style.width = `${percent}%`;
+        }
+
+        function triggerVibration(type = 'light') {
             try {
                 if (tg && tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
+                    tg.HapticFeedback.impactOccurred(type);
                 } else if (navigator.vibrate) {
                     navigator.vibrate(10);
                 }
@@ -147,9 +200,8 @@
         }
 
         function triggerAnimation() {
-            // Перезапускаем анимацию, даже если кликают очень быстро
             clickArea.classList.remove('animate');
-            void clickArea.offsetWidth; // трюк для сброса анимации в браузере
+            void clickArea.offsetWidth;
             clickArea.classList.add('animate');
         }
 
@@ -171,32 +223,53 @@
             }, 800);
         }
 
-        // Обработка касаний (смартфоны)
-        clickArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            
-            const touches = Array.from(e.changedTouches).slice(0, 4);
+        function handleTap(clientX, clientY) {
+            if (energy <= 0) {
+                triggerVibration('heavy'); // Вибрация ошибки, если энергия на нуле
+                return false;
+            }
 
-            touches.forEach((touch) => {
-                count++;
-                spawnPlusOne(touch.clientX, touch.clientY);
-            });
+            count++;
+            energy--;
 
             scoreElement.innerText = count;
-            saveScore();
-            triggerVibration();
+            updateEnergyUI();
+            saveState();
+            spawnPlusOne(clientX, clientY);
+            triggerVibration('light');
             triggerAnimation();
+            return true;
+        }
+
+        // Авто-восстановление энергии (+1 каждую секунду)
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy = Math.min(maxEnergy, energy + 1);
+                updateEnergyUI();
+                saveState();
+            }
+        }, 1000);
+
+        // Обработка касаний (телефоны)
+        clickArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touches = Array.from(e.changedTouches).slice(0, 4);
+
+            let successTaps = 0;
+            touches.forEach((touch) => {
+                if (energy > 0) {
+                    if (handleTap(touch.clientX, touch.clientY)) {
+                        successTaps++;
+                    }
+                }
+            });
         }, { passive: false });
 
         // Резерв для ПК (мышка)
         clickArea.addEventListener('mousedown', (e) => {
             if (!('ontouchstart' in window)) {
-                count++;
-                scoreElement.innerText = count;
-                spawnPlusOne(e.clientX, e.clientY);
-                saveScore();
-                triggerVibration();
-                triggerAnimation();
+                const rect = clickArea.getBoundingClientRect();
+                handleTap(e.clientX, e.clientY);
             }
         });
     </script>
