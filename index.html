@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MellTap</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?v=26"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=27"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -358,7 +358,7 @@
                     <div class="card-title">Запас энергии</div>
                     <div class="card-desc">+250 к макс. энергии</div>
                 </div>
-                <button class="card-btn" id="btnBuyEnergy">200$</button>
+                <button class="card-btn" id="btnBuyEnergy">750$</button>
             </div>
         </div>
     </div>
@@ -429,7 +429,7 @@
         let maxEnergy = 500;
         let tapPower = 1;
         let multitapCost = 100;
-        let energyCost = 200;
+        let energyCost = 750;
 
         function loadGame() {
             try {
@@ -449,7 +449,7 @@
                 multitapCost = savedMultitapCost ? parseInt(savedMultitapCost, 10) : 100;
 
                 const savedEnergyCost = localStorage.getItem('mell_energy_cost');
-                energyCost = savedEnergyCost ? parseInt(savedEnergyCost, 10) : 200;
+                energyCost = savedEnergyCost ? parseInt(savedEnergyCost, 10) : 750;
 
                 const lastTime = localStorage.getItem('mell_last_time');
                 if (lastTime) {
@@ -545,12 +545,11 @@
             }
         });
 
-        // Покупка запаса энергии (увеличивает лимит, а текущая энергия продолжает восстанавливаться дальше)
+        // Покупка запаса энергии (стартовая цена 750$, +40% к стоимости)
         btnBuyEnergy.addEventListener('click', () => {
             if (count >= energyCost) {
                 count -= energyCost;
                 maxEnergy += 250;
-                // energy не сбрасываем в maxEnergy — она остаётся прежней и наполняется по 1 ед/сек
                 energyCost = Math.round(energyCost * 1.4);
                 saveGame();
                 updateUI();
@@ -579,7 +578,7 @@
             maxEnergy = 500;
             tapPower = 1;
             multitapCost = 100;
-            energyCost = 200;
+            energyCost = 750;
 
             saveGame();
             updateUI();
